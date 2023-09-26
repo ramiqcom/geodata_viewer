@@ -33,3 +33,13 @@ body {
 .center3 {
   align-items: center;
 }
+
+dialog {
+	background-color: maroon;
+	border-radius: 1%;
+	color: white;
+	display: flex;
+	flex-direction: column;
+	font-weight: 700;
+	border: 0px solid maroon;
+}

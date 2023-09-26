@@ -6,14 +6,20 @@ L.tileLayer('http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}', {
 	attribution: 'Google Maps'
 }).addTo(Map);
 
-// Vector tile 
-let vectorTile;
-
-// Image tile
-let imageTile;
+// Data tile
+let data;
 
 // Map div
 const MapDiv = document.getElementById('map');
+
+// Dialog div
+const dialogDiv = document.getElementById('errorMsg');
+dialogDiv.ondragover = function(e) {
+	dialogDiv.close();
+};
+dialogDiv.onclick = function(e) {
+	dialogDiv.close();
+};
 
 // On drag function
 MapDiv.ondragover = function prepare(e){
@@ -30,9 +36,11 @@ MapDiv.ondrop = async function loadData(e){
 	// Get file format
 	let format = file.name.split('.');
 	format = format[format.length - 1];
-		
-	// Bounds
-	let bounds;
+
+	// Limit file size
+	if (file.size > 100e6){
+		errorShow('File size too big!\n Only accept file smaller than 100mb!');
+	}
 
 	// Data type
 	let type;
@@ -48,58 +56,91 @@ MapDiv.ondrop = async function loadData(e){
 		case 'tif':
 			type = 'raster';
 			break;
+		default:
+			errorShow(`.${format} is not supported!\nOnly accept .geojson, .json, .zip(shapefile), .kml, .kmz, .tiff, and .tif format`);
 	}
+
+	// Remove current data from map
+	data ? Map.removeLayer(data) : null;;
 
 	// Run something based on type
 	switch (type) {
 		case 'vector':
-			// GeoJSON file
-			let geojson;
-
-			// Parse geojson
-			switch (format) {
-				case 'geojson':
-				case 'json':
-					geojson = JSON.parse(await file.text());
-					break;
-				case 'kmz':
-				case 'kml':
-					geojson = new DOMParser().parseFromString(await file.text(), 'text/xml');
-					geojson = await toGeoJSON.kml(geojson);
-					break;
-				case 'zip':
-					geojson = await shp(await file.arrayBuffer());
-					break;
-			}
-
-			// Set bounds
-			bounds = L.geoJSON(geojson).getBounds();
-
-			// Option for geojson tile
-			const optionsVector = {
-				maxZoom: 12,
-				tolerance: 5,
-				debug: 0,
-				style: { 
-					color: 'blue', weight: 1, fillOpacity: 0.3 
-				}
-			};
-
-			// Vector tle
-			vectorTile = L.geoJson.vt(geojson, optionsVector).addTo(Map);
+			await vectorLayer(format, file);
 			break;
 		case 'raster':
-			imageTile = await parseGeoraster(file);
-			imageTile = new GeoRasterLayer({
-				georaster: imageTile,
-				opacity: 1,
-				resolution: 1024
-			}).addTo(Map);
-	
-			bounds = imageTile.extent.leafletBounds;
+			await rasterLayer(file);
+			break;
+	}
+}
+
+// Function to load vector data
+async function vectorLayer(format, file){
+	// GeoJSON file
+	let geojson;
+
+	// Parse geojson
+	switch (format) {
+		case 'geojson':
+		case 'json':
+			geojson = JSON.parse(await file.text());
+			break;
+		case 'kmz':
+		case 'kml':
+			geojson = new DOMParser().parseFromString(await file.text(), 'text/xml');
+			geojson = await toGeoJSON.kml(geojson);
+			break;
+		case 'zip':
+			geojson = await shp(await file.arrayBuffer());
 			break;
 	}
 
-	// Zoom to feature
+	// Set bounds
+	const bounds = L.geoJSON(geojson).getBounds();
+
+	// Option for geojson tile
+	const optionsVector = {
+		maxZoom: 24,
+		minZoom: 0,
+		tolerance: 5,
+		maxNativeZoom: 15,
+		minNativeZoom: 5,
+		debug: 0,
+		style: { 
+			color: 'blue', weight: 1, fillOpacity: 0.3 
+		}
+	};
+
+	// Vector tle
+	const vectorTile = L.geoJson.vt(geojson, optionsVector).addTo(Map);
+
+	// Zoom to bounds
 	Map.fitBounds(bounds);
+
+	// Set data
+	data = vectorTile;
+}
+
+// Function to load raster data
+async function rasterLayer(file){
+	let imageTile = await parseGeoraster(file);
+	imageTile = new GeoRasterLayer({
+		georaster: imageTile,
+		opacity: 1,
+		resolution: 1024
+	}).addTo(Map);
+	
+	const bounds = imageTile.extent.leafletBounds;
+
+	Map.fitBounds(bounds);
+
+	// Set data
+	data = imageTile;
+}
+
+// Error show
+function errorShow(msg){
+	dialogDiv.innerText = msg;
+	dialogDiv.showModal();
+	throw new Error(msg);
 }
