@@ -7,10 +7,7 @@ L.tileLayer('http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}', {
 }).addTo(Map);
 
 // Data tile
-let data;
-
-// Map div
-const MapDiv = document.getElementById('map');
+const layers = document.getElementById('panel');
 
 // Dialog div
 const dialogDiv = document.getElementById('errorMsg');
@@ -22,12 +19,12 @@ dialogDiv.onclick = function(e) {
 };
 
 // On drag function
-MapDiv.ondragover = function prepare(e){
+window.ondragover = function prepare(e){
 	e.preventDefault();
 }
 
 // On drop function
-MapDiv.ondrop = async function loadData(e){
+window.ondrop = async function loadData(e){
 	e.preventDefault();
 
 	// Get file
@@ -59,9 +56,6 @@ MapDiv.ondrop = async function loadData(e){
 		default:
 			errorShow(`.${format} is not supported!\nOnly accept .geojson, .json, .zip(shapefile), .kml, .kmz, .tiff, and .tif format`);
 	}
-
-	// Remove current data from map
-	data ? Map.removeLayer(data) : null;;
 
 	// Run something based on type
 	switch (type) {
@@ -119,6 +113,9 @@ async function vectorLayer(format, file){
 
 	// Set data
 	data = vectorTile;
+
+	// Add layer control
+	addLayers(vectorTile, file.name);
 }
 
 // Function to load raster data
@@ -136,6 +133,9 @@ async function rasterLayer(file){
 
 	// Set data
 	data = imageTile;
+
+	// Add layer control
+	addLayers(imageTile, file.name);
 }
 
 // Error show
@@ -143,4 +143,37 @@ function errorShow(msg){
 	dialogDiv.innerText = msg;
 	dialogDiv.showModal();
 	throw new Error(msg);
+}
+
+// Function to create a div
+function addLayers(layer, name){
+	const div = document.createElement('div');
+	div.style.display = 'flex';
+	div.style.gap = '1%';
+	div.style.justifyContent = 'flex-between';
+	
+	const check = document.createElement('input');
+	check.setAttribute('type', 'checkbox');
+	check.setAttribute('checked', true);
+	check.onchange = e => {
+		const status = e.target.checked;
+		status ? layer.addTo(Map) : Map.removeLayer(layer);
+	};
+	div.append(check);
+	
+	// Name
+	const label = document.createElement('div')
+	label.append(name);
+	div.append(label);
+
+	// Button to remove layer definetrly
+	const button = document.createElement('button');
+	button.onclick = () => {
+		Map.removeLayer(layer);
+		div.remove();
+	};
+	button.append('Remove');
+	div.append(button);
+
+	layers.append(div);
 }
