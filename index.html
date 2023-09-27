@@ -15,7 +15,6 @@
 	<script src="./lib/kml-geojson.js"></script>
 	<script src="https://unpkg.com/georaster"></script>
 	<script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/gridjs/dist/gridjs.umd.js"></script>
 
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -23,17 +22,21 @@
 
 <body>
 	
+	<dialog id="loading">
+	</dialog>
+
 	<div id="panel">
-		<div style="font-weight: bold;">
+		<div style="font-weight: bold;display: flex;gap: 10px;flex-direction: column;">
 			Layer list
+			<div style="font-weight: 500; font-size: small;">
+				Add by dragging the file to map or upload the data
+			</div>
+			<input type="file" accept=".tiff,.tif,.geojson,.json,.zip,.kml,.kmz" id="upload"></input>
 		</div>
 		<div id="layers">
 		</div>
 	</div>
 
-	<dialog id="table">
-		<div id="tablegrid"></div>
-	</dialog>
 	<dialog id="errorMsg"></dialog>
 	<div id="map"></div>
 

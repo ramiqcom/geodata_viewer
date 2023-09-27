@@ -6,58 +6,48 @@ L.tileLayer('http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}', {
 	attribution: 'Google Maps'
 }).addTo(map);
 
+// Loading dialog
+const loading = document.getElementById('loading');
+loading.style.display = 'flex';
+loading.style.flexDirection = 'column';
+
+// Loading screen function
+function setLoading(status, text, color){
+	if (status) {
+		loading.showModal();
+		loading.style.color = color;
+		loading.innerText = text;
+	} else {
+		loading.innerText = null;
+		loading.close();
+	};
+}
+
 // Data tile
 const layers = document.getElementById('layers');
 
-// Dialog table
-const tabPanel = document.getElementById('table');
-tabPanel.style.width = '50%';
-const buttonDiv = document.createElement('div');
-buttonDiv.style.display = 'flex';
-buttonDiv.style.flexDirection = 'row-reverse';
-const xbutton = document.createElement('button');
-xbutton.onclick = () => tabPanel.close();
-xbutton.append('X');
-tabPanel.prepend(xbutton);
-const gridDiv = document.getElementById('tablegrid');
-const grid = new gridjs.Grid({
-	data: [['No data']],
-	columns: ['No data'],
-	resizable: true,
-	autoWidth: true,
-	fixedHeader: true,
-	search: true,
-	sort: true,
-	height: '40vh',
-	style: {
-		container: {
-			fontSize: 'small'
-		}
-	}
-});
-grid.render(gridDiv);	
-
 // Dialog div
 const dialogDiv = document.getElementById('errorMsg');
-dialogDiv.ondragover = function(e) {
-	dialogDiv.close();
-};
-dialogDiv.onclick = function(e) {
-	dialogDiv.close();
-};
+dialogDiv.ondragover = () => dialogDiv.close();
+dialogDiv.onclick = () => dialogDiv.close();
+
+// Function when file uploaded
+const upload = document.getElementById('upload');
+upload.onchange = async e => loadFile(e.target.files[0])
+
 
 // On drag function
-window.ondragover = function prepare(e){
-	e.preventDefault();
-}
+window.ondragover = e => e.preventDefault();
 
 // On drop function
-window.ondrop = async function loadData(e){
+window.ondrop = async e => {
+	// Prevent to open the file in new tab
 	e.preventDefault();
+	loadFile(e.dataTransfer.files[0])
+};
 
-	// Get file
-	const file = e.dataTransfer.files[0];
-
+// Function load file
+async function loadFile(file) {
 	// Get file format
 	let format = file.name.split('.');
 	format = format[format.length - 1];
@@ -101,6 +91,9 @@ async function vectorLayer(format, file){
 	// GeoJSON file
 	let geojson;
 
+	// Set loading screen
+	setLoading(true, 'Parsing file...', 'blue');
+
 	// Parse geojson
 	switch (format) {
 		case 'geojson':
@@ -117,19 +110,28 @@ async function vectorLayer(format, file){
 			break;
 	}
 
+	// Set loading screen to preparing tile
+	setLoading(true, 'Creating tile...', 'blue');
+
 	// Set bounds
 	const bounds = L.geoJSON(geojson).getBounds();
 
 	// Option for geojson tile
+	const red = Math.floor(Math.random() * 255 * Math.random());
+	const green = Math.floor(Math.random() * 255 * Math.random());
+	const blue = Math.floor(Math.random() * 255 * Math.random());
+	const fillColor = RGBAToHexA(red, green, blue, 0.3);
+	const color = RGBAToHexA(red, green, blue, 1);
 	const optionsVector = {
 		maxZoom: 24,
 		minZoom: 0,
 		tolerance: 5,
 		maxNativeZoom: 15,
 		minNativeZoom: 5,
-		debug: 0,
 		style: { 
-			color: 'blue', weight: 1, fillOpacity: 0.3 
+			color,
+			fillColor,
+			weight: 1, 
 		}
 	};
 
@@ -139,28 +141,36 @@ async function vectorLayer(format, file){
 	// Zoom to bounds
 	map.fitBounds(bounds);
 
-	// Set data
-	data = vectorTile;
+	// Set loading screen
+	setLoading(true, 'Adding data...', 'blue');
 
 	// Add layer control
-	addLayers(vectorTile, file.name, bounds, 'vector', geojson);
+	addLayers(vectorTile, file.name, bounds, 'vector', geojson, { color, fillColor });
 }
 
 // Function to load raster data
 async function rasterLayer(file){
+	// Set loading screen
+	setLoading(true, 'Parsing data...', 'blue');
+
 	let imageTile = await parseGeoraster(file);
+
+	// Set loading screen
+	setLoading(true, 'Creating tile...', 'blue');
+
+	// Create image tile
 	imageTile = new GeoRasterLayer({
 		georaster: imageTile,
 		opacity: 1,
 		resolution: 1024
 	}).addTo(map);
 	
+	// Zoom to bounds
 	const bounds = imageTile.extent.leafletBounds;
-
 	map.fitBounds(bounds);
 
-	// Set data
-	data = imageTile;
+	// Set loading screen
+	setLoading(true, 'Adding data...', 'blue');
 
 	// Add layer control
 	addLayers(imageTile, file.name, bounds, 'raster', null);
@@ -174,7 +184,7 @@ function errorShow(msg){
 }
 
 // Function to create a div
-function addLayers(layer, name, bounds, type, geojson){
+function addLayers(layer, name, bounds, type, geojson, { color, fillColor }){
 	// Main element
 	const div = document.createElement('div');
 	div.style.display = 'flex';
@@ -189,6 +199,7 @@ function addLayers(layer, name, bounds, type, geojson){
 	const first = document.createElement('div');
 	first.style.display = 'flex';
 	first.style.gap = '5px';
+	first.style.flex = 1;
 	div.append(first);
 
 	// Checkbox
@@ -217,39 +228,27 @@ function addLayers(layer, name, bounds, type, geojson){
 	const second = document.createElement('div');
 	second.style.display = 'flex';
 	second.style.gap = '5px';
+	second.style.flex = 1
 	div.append(second);
 
+	// Color
 	if (geojson) {
-		// Grid
-		let columns = Object.keys(geojson.features[0].properties).map(key => { return { id: key, name: key} });
-		let data = geojson.features.map(feat => feat.properties);
-		
-		// Set table data on gridjs
-		if (!(columns.length && data.length)) {
-			columns = ['No data'];
-			data = [['No data']];
+		// Color label
+		const colorDiv = document.createElement('input');
+		colorDiv.type = 'color';
+		colorDiv.value = color.slice(0, 7);
+		colorDiv.onchange = e => {
+			const value = e.target.value;
+			layer.options.style.color = value;
+			layer.options.style.fillColor = value + (fillColor.slice(7, 9));
+			layer.redraw();
 		};
-
-		// Updata data based column and data
-		grid.updateConfig({
-			data,
-			columns
-		}).forceRender();
-
-		// Table button
-		const table = document.createElement('button');
-		// Render table on click table button
-		table.onclick = () => {
-			tabPanel.showModal();
-		};
-		table.append('Table');
-
-		// Add table button to layers
-		second.append(table);	
+		second.append(colorDiv);
 	}
 
 	// Zoom to layer
 	const zoom = document.createElement('button');
+	zoom.style.flex = 1;
 	zoom.onclick = () => {
 		map.fitBounds(bounds);
 	};
@@ -258,10 +257,33 @@ function addLayers(layer, name, bounds, type, geojson){
 
 	// Button to remove layer definetly
 	const remove = document.createElement('button');
+	remove.style.flex = 1;
 	remove.onclick = () => {
 		map.removeLayer(layer);
 		div.remove();
 	};
 	remove.append('X');
 	second.append(remove);
+
+	// Set loading screen
+	setLoading(false);
+}
+
+// Function to get hex color
+function RGBAToHexA(r,g,b,a) {
+  r = r.toString(16);
+  g = g.toString(16);
+  b = b.toString(16);
+  a = Math.round(a * 255).toString(16);
+
+  if (r.length == 1)
+    r = "0" + r;
+  if (g.length == 1)
+    g = "0" + g;
+  if (b.length == 1)
+    b = "0" + b;
+  if (a.length == 1)
+    a = "0" + a;
+
+  return "#" + r + g + b + a;
 }

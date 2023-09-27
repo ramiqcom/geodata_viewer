@@ -68,6 +68,10 @@ dialog {
 #errorMsg {
 	font-weight: 700;
 	color: white;
-	border: 0px solid maroon;
 	background-color: maroon;
+}
+
+#loading {
+	border-radius: 100%;
+	font-weight: bold;
 }
