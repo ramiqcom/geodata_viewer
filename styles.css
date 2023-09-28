@@ -14,6 +14,57 @@ body {
 	flex-direction: row-reverse;
 }
 
+dialog {
+	border-radius: 5px;
+	display: flex;
+	flex-direction: column;
+	padding: 1%;
+	border: none !important;
+}
+
+div {
+	display: flex;
+}
+
+.center1 {
+  align-content: center;
+}
+
+.center2 {
+  justify-content: center;
+}
+
+.center3 {
+  align-items: center;
+}
+
+.vertical {
+	flex-direction: column;
+}
+
+.closebutton {
+	background-color: red;
+	border: none !important;
+	color: white;
+	border-radius: 5px;
+}
+
+.closebutton:hover {
+	background-color: darkred;
+}
+
+.smallgap {
+	gap: 5px;
+}
+
+.mediumgap {
+	gap: 10px;
+}
+
+.biggap {
+	gap: 20px;
+}
+
 #panel {
 	height: fit-content;
 	width: 20%;
@@ -43,26 +94,6 @@ body {
 
 #panel {
 	flex: 1
-}
-
-.center1 {
-  align-content: center;
-}
-
-.center2 {
-  justify-content: center;
-}
-
-.center3 {
-  align-items: center;
-}
-
-dialog {
-	border-radius: 5px;
-	display: flex;
-	flex-direction: column;
-	padding: 2%;
-	border: none !important;
 }
 
 #errorMsg {

@@ -9,9 +9,121 @@ L.tileLayer('http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}', {
 // Loading dialog
 const loading = document.getElementById('loading');
 loading.style.display = 'flex';
-loading.style.flexDirection = 'column';
+loading.className = 'vertical';
 
-// Loading screen function
+// Data tile
+const layers = document.getElementById('layers');
+
+// Dialog div
+const dialogDiv = document.getElementById('errorMsg');
+dialogDiv.ondragover = () => dialogDiv.close();
+dialogDiv.onclick = () => dialogDiv.close();
+
+// Add data button
+const addButton = document.getElementById('addbutton');
+const uploadPanel = document.getElementById('inputdata');
+addButton.onclick = () => {
+	uploadPanel.showModal();
+};
+
+// Change input option
+const inputOption = document.getElementById('selectinput');
+inputOption.onchange = (e) => {
+	const choices = [
+		{ value: 'upload', id: 'upload' },
+		{ value: 'text', id: 'inputtext' },
+		{ value: 'url', id: 'inputurl' },
+		{ value: 'ee', id: 'inputee' }
+	];
+	const choice = e.target.value;
+	choices.map(dict => {
+		const value = dict.value;
+		const input = document.getElementById(dict.id);
+		value == choice ? input.style.display = 'flex' : input.style.display = 'none';
+	});
+};
+
+// Input text
+const inputTextChoice = document.getElementById('textchoice');
+const inputTextArea = document.getElementById('inputtextarea');
+const inputTextButton = document.getElementById('inputtextbutton');
+inputTextButton.onclick = async () => {
+	// Geojson data
+	let geojson;
+
+	// Error if the text is too long
+	if (inputTextArea.length > 1e6){
+		errorShow('Input is too long! Only under 1 million characters are allowed!')
+	}
+
+	// Parse geojson
+	try {
+		switch (inputTextChoice.value){
+			case 'geojson':
+				geojson = JSON.parse(inputTextArea.value);
+				break;
+			case 'kml':
+				geojson = new DOMParser().parseFromString(inputTextArea.value, 'text/xml');
+				geojson = await toGeoJSON.kml(geojson);
+				break;
+		};
+	} catch (error) {
+		errorShow(error);
+	};
+
+	// Process vector layer
+	processVector(geojson, `${inputTextChoice.value}_${String(new Date().getTime())}`);
+};
+
+// Input url
+const inputUrlChoice = document.getElementById('urlchoice');
+const inputUrlText = document.getElementById('urltext');
+const inputUrlButton = document.getElementById('urlbutton');
+inputUrlButton.onclick = async () => {
+	try {
+		switch(inputUrlChoice.value) {
+			case 'tile':
+				const tile = L.tileLayer(inputUrlText.value).addTo(map);
+				addLayers(tile, `tile_${String(new Date().getTime())}`, null, 'tile', null, null);
+				break;
+			case 'file':
+				let name = inputUrlText.value.split('/');
+				name = name[name.length - 1];
+				let file = await fetch(inputUrlText.value);
+				file = await file.blob();
+				file.name = name;
+				loadFile(file);
+		};
+	} catch (error) {
+		errorShow(error);
+	};
+}
+
+// Close input data button
+document.getElementById('closeinput').onclick = () => uploadPanel.close();
+
+// Upload data
+const uploadButton = document.getElementById('upload');
+uploadButton.onchange = (e) => {
+	loadFile(e.target.files[0]);
+};
+
+// On drag function
+window.ondragover = e => e.preventDefault();
+
+// On drop function
+window.ondrop = async (e) => {
+	// Prevent to open the file in new tab
+	e.preventDefault();
+	loadFile(e.dataTransfer.files[0]);
+};
+
+/**
+ * Loading screen function
+ * @param {Boolean} status 
+ * @param {String} text 
+ * @param {String | Hex} color 
+ */
 function setLoading(status, text, color){
 	if (status) {
 		loading.showModal();
@@ -23,30 +135,10 @@ function setLoading(status, text, color){
 	};
 }
 
-// Data tile
-const layers = document.getElementById('layers');
-
-// Dialog div
-const dialogDiv = document.getElementById('errorMsg');
-dialogDiv.ondragover = () => dialogDiv.close();
-dialogDiv.onclick = () => dialogDiv.close();
-
-// Function when file uploaded
-const upload = document.getElementById('upload');
-upload.onchange = async e => loadFile(e.target.files[0])
-
-
-// On drag function
-window.ondragover = e => e.preventDefault();
-
-// On drop function
-window.ondrop = async e => {
-	// Prevent to open the file in new tab
-	e.preventDefault();
-	loadFile(e.dataTransfer.files[0])
-};
-
-// Function load file
+/**
+ * Function load file
+ * @param {Blob} file 
+ */
 async function loadFile(file) {
 	// Get file format
 	let format = file.name.split('.');
@@ -86,7 +178,11 @@ async function loadFile(file) {
 	}
 }
 
-// Function to load vector data
+/**
+ * Function to load vector data
+ * @param {'geojson' | 'json' | 'kmz' | 'kml' | 'zip'} format 
+ * @param {Blob} file 
+ */
 async function vectorLayer(format, file){
 	// GeoJSON file
 	let geojson;
@@ -110,6 +206,16 @@ async function vectorLayer(format, file){
 			break;
 	}
 
+	// Process vector layer
+	processVector(geojson, file.name)
+}
+
+/**
+ * Function to process vector layer
+ * @param {GeoJSON} geojson 
+ * @param {String} name 
+ */
+function processVector(geojson, name){
 	// Set loading screen to preparing tile
 	setLoading(true, 'Creating tile...', 'blue');
 
@@ -145,10 +251,13 @@ async function vectorLayer(format, file){
 	setLoading(true, 'Adding data...', 'blue');
 
 	// Add layer control
-	addLayers(vectorTile, file.name, bounds, 'vector', geojson, { color, fillColor });
+	addLayers(vectorTile, name, bounds, 'vector', geojson, { color, fillColor });
 }
 
-// Function to load raster data
+/**
+ * Function to load raster data
+ * @param {Blob} file 
+ */
 async function rasterLayer(file){
 	// Set loading screen
 	setLoading(true, 'Parsing data...', 'blue');
@@ -176,18 +285,29 @@ async function rasterLayer(file){
 	addLayers(imageTile, file.name, bounds, 'raster', null);
 }
 
-// Error show
+/**
+ * Error show
+ * @param {String} msg 
+ */
 function errorShow(msg){
 	dialogDiv.innerText = msg;
 	dialogDiv.showModal();
 	throw new Error(msg);
 }
 
-// Function to create a div
-function addLayers(layer, name, bounds, type, geojson, { color, fillColor }){
+/**
+ * Function to create a layer info
+ * @param {L.tileLayer | L.GridLayer} layer 
+ * @param {String} name 
+ * @param {L.latLngBounds=} bounds
+ * @param {"vector" | "raster" | "tile"} type 
+ * @param {GeoJSON=} geojson
+ * @param {String= | Hex=} dictColor.color
+ * @param {String= | Hex=} dictColor.fillColor
+ */
+function addLayers(layer, name, bounds, type, geojson, dictColor){
 	// Main element
 	const div = document.createElement('div');
-	div.style.display = 'flex';
 	div.style.gap = '1%';
 	div.style.justifyContent = 'space-between';
 	div.style.alignContent = 'center';
@@ -197,8 +317,7 @@ function addLayers(layer, name, bounds, type, geojson, { color, fillColor }){
 	
 	// First div
 	const first = document.createElement('div');
-	first.style.display = 'flex';
-	first.style.gap = '5px';
+	first.className = 'smallgap';
 	first.style.flex = 1;
 	div.append(first);
 
@@ -226,9 +345,8 @@ function addLayers(layer, name, bounds, type, geojson, { color, fillColor }){
 
 	// Second div
 	const second = document.createElement('div');
-	second.style.display = 'flex';
-	second.style.gap = '5px';
-	second.style.flex = 1
+	second.style.flex = 1;
+	second.className = 'mediumgap';
 	div.append(second);
 
 	// Color
@@ -236,24 +354,26 @@ function addLayers(layer, name, bounds, type, geojson, { color, fillColor }){
 		// Color label
 		const colorDiv = document.createElement('input');
 		colorDiv.type = 'color';
-		colorDiv.value = color.slice(0, 7);
+		colorDiv.value = dictColor.color.slice(0, 7);
 		colorDiv.onchange = e => {
 			const value = e.target.value;
 			layer.options.style.color = value;
-			layer.options.style.fillColor = value + (fillColor.slice(7, 9));
+			layer.options.style.fillColor = value + (dictColor.fillColor.slice(7, 9));
 			layer.redraw();
 		};
 		second.append(colorDiv);
 	}
 
 	// Zoom to layer
-	const zoom = document.createElement('button');
-	zoom.style.flex = 1;
-	zoom.onclick = () => {
-		map.fitBounds(bounds);
-	};
-	zoom.append('Pan');
-	second.append(zoom);
+	if (bounds) {
+		const zoom = document.createElement('button');
+		zoom.style.flex = 1;
+		zoom.onclick = () => {
+			map.fitBounds(bounds);
+		};
+		zoom.append('Pan');
+		second.append(zoom);
+	}
 
 	// Button to remove layer definetly
 	const remove = document.createElement('button');
@@ -267,6 +387,9 @@ function addLayers(layer, name, bounds, type, geojson, { color, fillColor }){
 
 	// Set loading screen
 	setLoading(false);
+
+	// Close upload panel
+	uploadPanel.close();
 }
 
 // Function to get hex color

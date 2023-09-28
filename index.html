@@ -22,16 +22,57 @@
 
 <body>
 	
+	<dialog id="inputdata" style="font-size: medium;width: 20%;" class="vertical mediumgap">
+
+		<div style="flex-direction: row-reverse;">
+			<button class="closebutton" id="closeinput">X</button>
+		</div>
+
+		<div class="vertical">
+			Select an input data method
+			<select id="selectinput" style="width: 100%;">
+				<option value="upload">Upload file</option>
+				<option value="text">Text</option>
+				<option value="url">URL/link</option>
+				<option value="ee">Google Earth Engine</option>
+			</select>
+		</div>
+
+		<div id="uploadoption" class="vertical">
+			<input type="file" accept=".tiff,.tif,.geojson,.json,.zip,.kml,.kmz" id="upload"></input>
+
+			<div class="vertical mediumgap" id="inputtext" style="display: none;">
+				<select id="textchoice" style="width: 100%;">
+					<option value="geojson">GeoJSON</option>
+					<option value="kml">KML/KMZ</option>
+				</select>
+				<textarea id='inputtextarea' style="width: 98%;height: 20vh;"></textarea>
+				<button id="inputtextbutton">Load data</button>
+			</div>
+
+			<div class="vertical mediumgap" id="inputurl" style="display: none;">
+				<select id="urlchoice" style="width: 100%;">
+					<option value="tile">XYZ tile</option>
+					<option value="file">File</option>
+				</select>
+				<input type="text" id='urltext' style="width: 98%;"></input>
+				<button id="urlbutton">Load data</button>
+			</div>
+			
+		</div>
+
+	</dialog>
+
 	<dialog id="loading">
 	</dialog>
 
 	<div id="panel">
-		<div style="font-weight: bold;display: flex;gap: 10px;flex-direction: column;">
+		<div style="font-weight: bold;" class="vertical mediumgap">
 			Layer list
 			<div style="font-weight: 500; font-size: small;">
-				Add by dragging the file to map or upload the data
+				Add by dragging the file to map or click + button
 			</div>
-			<input type="file" accept=".tiff,.tif,.geojson,.json,.zip,.kml,.kmz" id="upload"></input>
+			<button id="addbutton">+</button>
 		</div>
 		<div id="layers">
 		</div>
