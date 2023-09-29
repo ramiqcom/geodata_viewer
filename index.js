@@ -166,7 +166,7 @@ eebutton.onclick = async () => {
 	};
 
 	// Fetch tile
-	let tile = await fetch('http://localhost:3000/image', options);
+	let tile = await fetch('https://geodata-edge.vercel.app/image', options);
 	tile = await tile.json();
 	tile = L.tileLayer(tile.tile).addTo(map);
 
