@@ -58,6 +58,9 @@ inputTextButton.onclick = async () => {
 
 	// Parse geojson
 	try {
+		// Set loading screen
+		setLoading(true, 'Parse text...', 'blue');
+
 		switch (inputTextChoice.value){
 			case 'geojson':
 				geojson = JSON.parse(inputTextArea.value);
@@ -87,12 +90,17 @@ inputUrlButton.onclick = async () => {
 	try {
 		switch(inputUrlChoice.value) {
 			case 'tile':
+				// Set loading screen
+				setLoading(true, 'Fetch tile...', 'blue');
 				const tile = L.tileLayer(inputUrlText.value).addTo(map);
 				addLayers(tile, `tile_${date}`, null, 'tile', null, null, date);
 				break;
 			case 'file':
 				let name = inputUrlText.value.split('/');
 				name = name[name.length - 1];
+
+				// Set loading screen
+				setLoading(true, 'Fetch data...', 'blue');
 				let file = await fetch(inputUrlText.value);
 				file = await file.blob();
 				file.name = name;
@@ -166,15 +174,25 @@ eebutton.onclick = async () => {
 	};
 
 	// Fetch tile
-	let tile = await fetch('https://geodata-edge.vercel.app/image', options);
-	tile = await tile.json();
-	tile = L.tileLayer(tile.tile).addTo(map);
+	try {
+		// Set loading screen
+		setLoading(true, 'Fetch data...', 'blue')
 
-	// Date
-	const date = String(new Date().getTime());
+		// Fetch tile
+		let tile = await fetch('https://geodata-edge.vercel.app/image', options);
+		tile = await tile.json();
 
-	// Add tile to map
-	addLayers(tile, `ee_${date}`, bounds, 'tile', null, null, date);
+		setLoading(true, 'Adding data...', 'blue')
+		tile = L.tileLayer(tile.tile).addTo(map);
+
+		// Date
+		const date = String(new Date().getTime());
+
+		// Add tile to map
+		addLayers(tile, `ee_${date}`, bounds, 'tile', null, null, date);
+	} catch (error) {
+		errorShow(error);	
+	}	
 }
 
 // Close input data button
