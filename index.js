@@ -499,6 +499,7 @@ function addLayers(layer, name, bounds, type, geojson, dictColor, date){
 	// Button to remove layer definetly
 	const remove = document.createElement('button');
 	remove.style.flex = 1;
+	remove.className = 'closebutton'
 	remove.onclick = () => {
 		map.removeLayer(layer);
 		div.remove();
@@ -530,4 +531,15 @@ function RGBAToHexA(r,g,b,a) {
     a = "0" + a;
 
   return "#" + r + g + b + a;
+}
+
+/**
+ * 
+ * @param {String} str 
+ * @returns 
+ */
+function decode(str) {
+	let txt = document.createElement("textarea");
+	txt.innerHTML = str;
+	return txt.value;
 }

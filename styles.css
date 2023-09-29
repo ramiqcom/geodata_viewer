@@ -19,6 +19,7 @@ dialog {
 	display: flex;
 	flex-direction: column;
 	padding: 1%;
+	font-size: medium;
 	border: none !important;
 }
 
@@ -28,6 +29,46 @@ div {
 
 select {
 	width: 100%;
+}
+
+button {
+  height: 100%;
+  border-radius: 5px;
+  background-color: #215478;
+  text-align: center;
+  color: white;
+  font-size: medium;
+  border: 0;
+}
+
+button:hover {
+  background-color: #267565;
+}
+
+button:disabled {
+  background-color: transparent;
+  color: black;
+  border: 1px solid #215478;
+}
+
+input[type=file]::file-selector-button {
+  height: 100%;
+  border-radius: 100vh;
+  width: 50%;
+  background-color: #215478;
+  text-align: center;
+  color: white;
+  font-size: medium;
+  border: 0;
+}
+
+input[type=file]::file-selector-button:hover {
+  background-color: #267565;
+}
+
+select {
+	height: 100%;
+	font-size: medium;
 }
 
 .short {
@@ -58,7 +99,6 @@ select {
 	background-color: red;
 	border: none !important;
 	color: white;
-	border-radius: 5px;
 }
 
 .closebutton:hover {
@@ -81,6 +121,7 @@ select {
 	height: fit-content;
 	width: 20%;
 	z-index: 999999;
+	font-size: medium;
 	position: absolute;
 	background-color: white;
 	display: flex;
