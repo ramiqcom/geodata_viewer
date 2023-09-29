@@ -71,8 +71,11 @@ inputTextButton.onclick = async () => {
 		errorShow(error);
 	};
 
+	// Date data
+	const date = String(new Date().getTime());
+
 	// Process vector layer
-	processVector(geojson, `${inputTextChoice.value}_${String(new Date().getTime())}`);
+	processVector(geojson, `${inputTextChoice.value}_${date}`, date);
 };
 
 // Input url
@@ -80,11 +83,12 @@ const inputUrlChoice = document.getElementById('urlchoice');
 const inputUrlText = document.getElementById('urltext');
 const inputUrlButton = document.getElementById('urlbutton');
 inputUrlButton.onclick = async () => {
+	const date = String(new Date().getTime());
 	try {
 		switch(inputUrlChoice.value) {
 			case 'tile':
 				const tile = L.tileLayer(inputUrlText.value).addTo(map);
-				addLayers(tile, `tile_${String(new Date().getTime())}`, null, 'tile', null, null);
+				addLayers(tile, `tile_${date}`, null, 'tile', null, null, date);
 				break;
 			case 'file':
 				let name = inputUrlText.value.split('/');
@@ -92,11 +96,85 @@ inputUrlButton.onclick = async () => {
 				let file = await fetch(inputUrlText.value);
 				file = await file.blob();
 				file.name = name;
-				loadFile(file);
+				loadFile(file, date);
 		};
 	} catch (error) {
 		errorShow(error);
 	};
+}
+
+// Input data for earth engine
+const vectorSelect = document.getElementById('vectorlist');
+const satellite = document.getElementById('satellite');
+const startdate = document.getElementById('startdate');
+const enddate = document.getElementById('enddate');
+const roi = document.getElementById('vectorlist');
+const vis = document.getElementById('visualization');
+const red = document.getElementById('red');
+const green = document.getElementById('green');
+const blue = document.getElementById('blue');
+const eebutton = document.getElementById('buttonee');
+
+// Change vis band
+vis.onchange = (e) => {
+	if (e.target.value == 'multiband') {
+		red.style.display = 'flex';
+		green.style.display = 'flex';
+		blue.style.display = 'flex';
+	} else {
+		red.style.display = 'flex';
+		green.style.display = 'none';
+		blue.style.display = 'none';
+	};
+}
+
+// Activate fetch button
+roi.onchange = (e) => {
+	const bbox = e.target.value;
+	if (bbox) {
+		eebutton.disabled = false;
+	} else {
+		eebutton.disabled = true;
+	};
+};
+
+// Run ee data
+eebutton.onclick = async () => {
+	// GeoJSON
+	const geojson = turf.bboxPolygon(JSON.parse(vectorSelect.value).bbox);
+
+	// Bounds
+	const bounds = L.geoJSON(geojson).getBounds();
+
+	// Body
+	const body = {
+		satellite: satellite.value,
+		date: [startdate.value, enddate.value],
+		visualization: {
+			bands: vis.value == 'multiband' ? [red.value, green.value, blue.value] : [red.value]
+		},
+		geojson: geojson
+	};
+
+	// Option
+	const options = {
+		method: 'POST',
+		body: JSON.stringify(body),
+		headers: {
+			'Content-Type': 'application/json',
+		}
+	};
+
+	// Fetch tile
+	let tile = await fetch('http://localhost:3000/image', options);
+	tile = await tile.json();
+	tile = L.tileLayer(tile.tile).addTo(map);
+
+	// Date
+	const date = String(new Date().getTime());
+
+	// Add tile to map
+	addLayers(tile, `ee_${date}`, bounds, 'tile', null, null, date);
 }
 
 // Close input data button
@@ -105,7 +183,11 @@ document.getElementById('closeinput').onclick = () => uploadPanel.close();
 // Upload data
 const uploadButton = document.getElementById('upload');
 uploadButton.onchange = (e) => {
-	loadFile(e.target.files[0]);
+	// Date data
+	const date = String(new Date().getTime());
+
+	// Load data
+	loadFile(e.target.files[0], date);
 };
 
 // On drag function
@@ -115,7 +197,12 @@ window.ondragover = e => e.preventDefault();
 window.ondrop = async (e) => {
 	// Prevent to open the file in new tab
 	e.preventDefault();
-	loadFile(e.dataTransfer.files[0]);
+
+	// Date data
+	const date = String(new Date().getTime());
+
+	// Load data
+	loadFile(e.dataTransfer.files[0], date);
 };
 
 /**
@@ -139,7 +226,7 @@ function setLoading(status, text, color){
  * Function load file
  * @param {Blob} file 
  */
-async function loadFile(file) {
+async function loadFile(file, date) {
 	// Get file format
 	let format = file.name.split('.');
 	format = format[format.length - 1];
@@ -170,10 +257,10 @@ async function loadFile(file) {
 	// Run something based on type
 	switch (type) {
 		case 'vector':
-			await vectorLayer(format, file);
+			await vectorLayer(format, file, date);
 			break;
 		case 'raster':
-			await rasterLayer(file);
+			await rasterLayer(file, date);
 			break;
 	}
 }
@@ -182,8 +269,9 @@ async function loadFile(file) {
  * Function to load vector data
  * @param {'geojson' | 'json' | 'kmz' | 'kml' | 'zip'} format 
  * @param {Blob} file 
+ * @param {String} date
  */
-async function vectorLayer(format, file){
+async function vectorLayer(format, file, date){
 	// GeoJSON file
 	let geojson;
 
@@ -207,15 +295,16 @@ async function vectorLayer(format, file){
 	}
 
 	// Process vector layer
-	processVector(geojson, file.name)
+	processVector(geojson, file.name, date)
 }
 
 /**
  * Function to process vector layer
  * @param {GeoJSON} geojson 
  * @param {String} name 
+ * @param {String} date
  */
-function processVector(geojson, name){
+function processVector(geojson, name, date){
 	// Set loading screen to preparing tile
 	setLoading(true, 'Creating tile...', 'blue');
 
@@ -251,14 +340,15 @@ function processVector(geojson, name){
 	setLoading(true, 'Adding data...', 'blue');
 
 	// Add layer control
-	addLayers(vectorTile, name, bounds, 'vector', geojson, { color, fillColor });
+	addLayers(vectorTile, name, bounds, 'vector', geojson, { color, fillColor }, date);
 }
 
 /**
  * Function to load raster data
  * @param {Blob} file 
+ * @param {String} date
  */
-async function rasterLayer(file){
+async function rasterLayer(file, date){
 	// Set loading screen
 	setLoading(true, 'Parsing data...', 'blue');
 
@@ -282,7 +372,7 @@ async function rasterLayer(file){
 	setLoading(true, 'Adding data...', 'blue');
 
 	// Add layer control
-	addLayers(imageTile, file.name, bounds, 'raster', null);
+	addLayers(imageTile, file.name, bounds, 'raster', null, date);
 }
 
 /**
@@ -304,8 +394,9 @@ function errorShow(msg){
  * @param {GeoJSON=} geojson
  * @param {String= | Hex=} dictColor.color
  * @param {String= | Hex=} dictColor.fillColor
+ * @param {String} date
  */
-function addLayers(layer, name, bounds, type, geojson, dictColor){
+function addLayers(layer, name, bounds, type, geojson, dictColor, date){
 	// Main element
 	const div = document.createElement('div');
 	div.style.gap = '1%';
@@ -348,6 +439,18 @@ function addLayers(layer, name, bounds, type, geojson, dictColor){
 	second.style.flex = 1;
 	second.className = 'mediumgap';
 	div.append(second);
+
+	// For type vector add to a list
+	if (type == 'vector'){
+		let bbox = turf.bbox(geojson);
+		bbox = JSON.stringify({ bbox });
+		const option = document.createElement('option');
+		option.value = bbox;
+		option.append(`${name}_${date}`);
+		vectorSelect.append(option);
+		// Enable eebutton
+		eebutton.disabled = false;
+	}
 
 	// Color
 	if (geojson) {

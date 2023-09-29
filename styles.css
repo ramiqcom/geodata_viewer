@@ -26,6 +26,18 @@ div {
 	display: flex;
 }
 
+select {
+	width: 100%;
+}
+
+.short {
+	flex: 1;
+}
+
+.long {
+	flex: 3
+}
+
 .center1 {
   align-content: center;
 }
